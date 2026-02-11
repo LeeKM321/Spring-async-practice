@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: Spring-async-practice
+
+server:
+  tomcat:
+    threads:
+      max: 1
