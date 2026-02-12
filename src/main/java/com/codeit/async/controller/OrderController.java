@@ -7,10 +7,7 @@ import com.codeit.async.service.OrderService;
 import com.codeit.async.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -97,6 +94,12 @@ public class OrderController {
         log.info("==== 부하 테스트 완료: {}ms ====", duration);
 
         return String.format("100개 주문 완료: %dms", duration);
+    }
+
+    @GetMapping("/event-test")
+    public String eventTest(@RequestParam(defaultValue = "4500") int price) {
+        Long orderId = orderService.createOrderWithEvent("user123", "아메리카노", price);
+        return "주문 생성 (이벤트): " + orderId;
     }
 
 

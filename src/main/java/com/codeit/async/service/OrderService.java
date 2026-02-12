@@ -1,8 +1,9 @@
 package com.codeit.async.service;
 
+import com.codeit.async.event.OrderCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,6 +12,26 @@ import org.springframework.stereotype.Service;
 public class OrderService {
 
     private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
+
+    // 이벤트를 발행하는 주문 생성
+    public Long createOrderWithEvent(String userId, String coffeeType, int price) {
+        String threadName = Thread.currentThread().getName();
+        log.info("[{}] 주문 생성 시작: userId={}, coffeeType={}", threadName, userId, coffeeType);
+
+        // 1. 주문 ID 생성 (실제로는 DB에 저장하고 ID를 받아옴)
+        Long orderId = System.currentTimeMillis();
+
+        // 2. 이벤트 발행!
+        OrderCreatedEvent event = new OrderCreatedEvent(orderId, userId, coffeeType, price);
+        eventPublisher.publishEvent(event);
+
+        log.info("[{}] 이벤트 발행 완료!", threadName);
+        return orderId;
+    }
+
+
+
 
     public void processOrder(String type) {
         log.info("[{}] 주문 처리 시작: ", Thread.currentThread().getName());
