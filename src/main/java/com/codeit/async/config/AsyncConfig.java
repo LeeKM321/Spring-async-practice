@@ -1,8 +1,11 @@
 package com.codeit.async.config;
 
+import com.codeit.async.exception.CustomAsyncExceptionHandler;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -11,7 +14,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Configuration
 @EnableAsync
 @Slf4j
-public class AsyncConfig {
+public class AsyncConfig implements AsyncConfigurer {
 
     // 커피 제조용 Executor
     @Bean(name = "coffeeExecutor")
@@ -74,7 +77,13 @@ public class AsyncConfig {
         return executor;
     }
 
-
+    /**
+     * 비동기 예외 핸들러 등록
+     */
+    @Override
+    public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+        return new CustomAsyncExceptionHandler();
+    }
 }
 
 
