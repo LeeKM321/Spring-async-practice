@@ -1,6 +1,7 @@
 package com.codeit.async.controller;
 
 import com.codeit.async.config.AsyncUtil;
+import com.codeit.async.context.UserContext;
 import com.codeit.async.model.Coffee;
 import com.codeit.async.model.PaymentResult;
 import com.codeit.async.service.CoffeeService;
@@ -9,6 +10,7 @@ import com.codeit.async.service.OrderService;
 import com.codeit.async.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -193,6 +195,56 @@ public class OrderController {
                 });
 
     }
+
+    @PostMapping("/with-user")
+    public ResponseEntity<?> createOrderWithUser(@RequestBody Map<String, Object> request) {
+        // 사용자 정보 설정 (실제로는 @AuthenticationPrincipal -> JWT 토큰에서 추출)
+        UserContext.setCurrentUser("admin@codeit.com");
+
+        String orderId = "ORD-" + System.currentTimeMillis();
+        String customerName = (String) request.get("customerName");
+        Integer amount = (Integer) request.getOrDefault("amount", 4000);
+
+        log.info("주문 접수 - 요청자: {}", UserContext.getCurrentUser());
+
+        // 비동기 알림 발송 (UserContext가 전파됨)
+        notificationService.sendOrderConfirmation(orderId, customerName);
+
+        UserContext.clear();  // 요청 처리 후 정리
+
+        return ResponseEntity.ok(Map.of("orderId", orderId, "status", "PROCESSING"));
+    }
+
+    @PostMapping("/with-trace")
+    public ResponseEntity<?> createOrderWithTrace(@RequestBody Map<String, Object> request) {
+        // 추적 ID 생성 (실제로는 요청 헤더나 필터에서 설정 -> 여러분들 스프린트 미션, 프로젝트에서는 requestId로 세팅)
+        String traceId = "TRACE-" + System.currentTimeMillis();
+        MDC.put("traceId", traceId);
+        UserContext.setCurrentUser("admin@codeit.com");
+
+        log.info("주문 접수 [traceId: {}]", traceId);
+
+        String orderId = "ORD-" + System.currentTimeMillis();
+        String customerName = (String) request.get("customerName");
+        Integer amount = (Integer) request.getOrDefault("amount", 4000);
+
+        // 비동기 작업들 (MDC와 UserContext가 모두 전파됨!)
+        coffeeService.makeCoffeeAsync("아메리카노");
+        notificationService.sendOrderConfirmation(orderId, customerName);
+        paymentService.processPayment(orderId, customerName, amount);
+
+        // 정리
+        MDC.clear();
+        UserContext.clear();
+
+        return ResponseEntity.ok(Map.of(
+                "orderId", orderId,
+                "traceId", traceId,
+                "status", "PROCESSING"
+        ));
+    }
+
+
 
 
 }

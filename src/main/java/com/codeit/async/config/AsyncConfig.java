@@ -54,6 +54,9 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("notification-");
 
+        // Task Decorator 설정
+        executor.setTaskDecorator(new ContextPropagatingTaskDecorator());
+
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardOldestPolicy());
 
         executor.initialize();
@@ -69,6 +72,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setThreadNamePrefix("payment-");
 
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setTaskDecorator(new ContextPropagatingTaskDecorator());
 
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(120);
