@@ -1,5 +1,6 @@
 package com.codeit.async.controller;
 
+import com.codeit.async.config.AsyncUtil;
 import com.codeit.async.model.Coffee;
 import com.codeit.async.model.PaymentResult;
 import com.codeit.async.service.CoffeeService;
@@ -30,6 +31,7 @@ public class OrderController {
     private final OrderService orderService;
     private final PaymentService paymentService;
     private final NotificationService notificationService;
+    private final AsyncUtil asyncUtil;
 
     @GetMapping("/sync/{type}")
     public Coffee orderCoffeeSync(@PathVariable String type) {
@@ -79,7 +81,7 @@ public class OrderController {
         // 4. 커피와 결제가 모두 완료되면 응답
         return coffeeFuture.thenCombine(paymentFuture, (coffee, paymentResult) -> {
             log.info("=== 전체 주문 프로세스 완료! ===");
-            return String.format("주문 완료: %s (결제: %s)", coffee.getType(), paymentResult ? "성공":"실패");
+            return String.format("주문 완료: %s (결제: %s)", coffee.getType(), paymentResult ? "성공" : "실패");
         });
     }
 
@@ -130,7 +132,7 @@ public class OrderController {
     }
 
     @PostMapping("/safe")
-    public ResponseEntity<?> createOrderSafely(@RequestBody Map<String, Object> request) {
+    public CompletableFuture<ResponseEntity<Map<String, String>>> createOrderSafely(@RequestBody Map<String, Object> request) {
         String orderId = "ORD-" + System.currentTimeMillis();
         String customerName = (String) request.get("customerName");
         Integer amount = (Integer) request.get("amount");
@@ -138,44 +140,59 @@ public class OrderController {
         log.info("주문 접수: {} - 고객: {}, 금액: {}원", orderId, customerName, amount);
 
         // 비동기 결제 처리
-        CompletableFuture<PaymentResult> paymentFuture
-                = paymentService.processPaymentWithResult(orderId, customerName, amount);
-
-        try {
-            PaymentResult result = paymentFuture.get(5, TimeUnit.SECONDS);
-
-            if (result.isSuccess()) {
-                return ResponseEntity.ok(
-                        Map.of(
+//        return paymentService.processPaymentWithResult(orderId, customerName, amount)
+        // 재시도 로직
+//                .handle((res, ex) -> {
+//                    // 예외 발생 시 재시도 로그를 찍고 다시 서비스를 호출
+//                    if (ex != null) {
+//                        log.warn("1차 결제 실패! 재시도를 수행합니다. (사유: {})", ex.getMessage());
+//                        return paymentService.processPaymentWithResult(orderId, customerName, amount);
+//                    }
+//                    // 성공 시 원래 결과를 그대로 다시 Future로 감싸서 넘깁니다.
+//                    return CompletableFuture.completedFuture(res);
+//                })
+//
+//                // 비동기 작업의 결과를 받아서 또다른 비동기 작업을 연결할 때
+//                // thenApply(): 다음 단계가 값만 바꾸는 단순 작업일 때
+//                // 여기서 thenCompose를 사용한 이유: 실패한 현재의 Future를 버리고, 새로 생성된 Future를 메인 흐름에 끼워넣는 과정 자체가
+//                // 구조적으로 또 다른 비동기 작업의 연결이라고 해석
+//                .thenCompose(future -> future)
+                return asyncUtil.retry(
+                        () -> paymentService.processPaymentWithResult(orderId, customerName, amount), 2
+                )
+                .orTimeout(10, TimeUnit.SECONDS)
+                .thenApply(result -> {
+                    if (result.isSuccess()) {
+                        return ResponseEntity.ok(Map.of(
                                 "orderId", orderId,
                                 "status", "SUCCESS",
                                 "message", result.getMessage()
-                        )
-                );
-            } else {
-                return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(
-                        Map.of(
-                                "orderId", orderId,
-                                "status", "FAILED",
-                                "message", result.getMessage()
-                        )
-                );
-            }
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        } catch (TimeoutException e) {
-            throw new RuntimeException(e);
-        }
+                        ));
+                    } else {
+                        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                                .body(
+                                        Map.of(
+                                                "orderId", orderId,
+                                                "status", "FAILED",
+                                                "message", result.getMessage()
+                                        )
+                                );
+                    }
+                })
+                .exceptionally(ex -> {
+                    Throwable cause = ex.getCause();
+                    if (ex instanceof TimeoutException || cause instanceof TimeoutException) {
+                        log.error("결제처리 시간 초과");
+                        return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
+                                .body(Map.of("status", "TIMEOUT", "message", "결제 시간이 초과되었습니다."));
+                    }
 
-
+                    log.error("타임아웃 이외의 예외: {}", cause.getMessage());
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Map.of("status", "BAD_REQUEST", "message", cause.getMessage()));
+                });
 
     }
-
-
-
-
 
 
 }
