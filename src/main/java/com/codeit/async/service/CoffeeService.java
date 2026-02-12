@@ -24,7 +24,7 @@ public class CoffeeService {
     }
 
     // 비동기 메서드
-    @Async
+    @Async("coffeeExecutor")
     public CompletableFuture<Coffee> makeCoffeeAsync(String type) {
         String threadName = Thread.currentThread().getName();
         log.info("[{}] 커피 제조 시작: {}", threadName, type);

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class NotificationService {
 
-    @Async
+    @Async("notificationExecutor")
     public void notifyCustomer(String type) {
         try {
             Thread.sleep(2000);
