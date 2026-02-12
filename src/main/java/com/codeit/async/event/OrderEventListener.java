@@ -1,20 +1,42 @@
 package com.codeit.async.event;
 
+import com.codeit.async.entity.Order;
+import com.codeit.async.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class OrderEventListener {
 
+    private final OrderRepository orderRepository;
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void handleOrderCreatedWithProblem(OrderCreatedEvent event) {
+        String threadName = Thread.currentThread().getName();
+        log.info("[{}] 주문 생성 이벤트 수신 (비동기, DB 사용): orderId={}", threadName, event.getOrderId());
+
+        try {
+            Order order = orderRepository.findById(event.getOrderId())
+                    .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다!"));
+
+            log.info("DB 조회 성공: {}", order.getId());
+        } catch (RuntimeException e) {
+            log.error("DB 조회 실패: {}", e.getMessage());
+        }
+    }
+
     /**
      * 1. 알림 발송 리스너
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_ROLLBACK)
     @Async("notificationExecutor")
     public void handleOrderCreatedAsync(OrderCreatedEvent event) {
         String threadName = Thread.currentThread().getName();
@@ -29,7 +51,7 @@ public class OrderEventListener {
     /**
      * 2. 포인트 적립 리스너
      */
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
     @Async
     public void addPoints(OrderCreatedEvent event) {
         String threadName = Thread.currentThread().getName();

@@ -83,7 +83,7 @@ public class OrderController {
 
         // 100개 동시 주문!
         List<CompletableFuture<Coffee>> futures = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 200; i++) {
             futures.add(coffeeService.makeCoffeeAsync("아메리카노"));
         }
 
@@ -99,6 +99,12 @@ public class OrderController {
     @GetMapping("/event-test")
     public String eventTest(@RequestParam(defaultValue = "4500") int price) {
         Long orderId = orderService.createOrderWithEvent("user123", "아메리카노", price);
+        return "주문 생성 (이벤트): " + orderId;
+    }
+
+    @GetMapping("/db")
+    public String transactionTest(@RequestParam(defaultValue = "4500") int price) {
+        Long orderId = orderService.createOrderWithDB("user123", "아메리카노", price);
         return "주문 생성 (이벤트): " + orderId;
     }
 
