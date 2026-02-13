@@ -159,9 +159,8 @@ public class OrderController {
 //                // 여기서 thenCompose를 사용한 이유: 실패한 현재의 Future를 버리고, 새로 생성된 Future를 메인 흐름에 끼워넣는 과정 자체가
 //                // 구조적으로 또 다른 비동기 작업의 연결이라고 해석
 //                .thenCompose(future -> future)
-                return asyncUtil.retry(
-                        () -> paymentService.processPaymentWithResult(orderId, customerName, amount), 2
-                )
+
+                return paymentService.processPaymentWithResult(orderId, customerName, amount)
                 .orTimeout(10, TimeUnit.SECONDS)
                 .thenApply(result -> {
                     if (result.isSuccess()) {
