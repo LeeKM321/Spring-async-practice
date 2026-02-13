@@ -243,10 +243,10 @@ public class OrderController {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @GetMapping("/webclient/inventory/{productId}")
-    public Mono<Map> checkInventory(@PathVariable String productId) {
+    public Mono<Map<String, Object>> checkInventory(@PathVariable String productId) {
         log.info("=== 재고 확인 요청 ===");
 
-        return inventoryService.checkStock(productId);
+        return inventoryService.checkStockWithRetry(productId);
     }
 
 

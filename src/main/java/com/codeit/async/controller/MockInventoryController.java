@@ -28,6 +28,18 @@ public class MockInventoryController {
         );
     }
 
+    @GetMapping("/check-error/{productId}")
+    public Map<String, Object> checkStockWithError(@PathVariable String productId) {
+        log.info("에러 발생 API 호출됨: {}", productId);
+
+        // 50% 확률로 에러!
+        if (Math.random() < 0.5) {
+            throw new RuntimeException("재고 시스템 오류!");
+        }
+
+        return Map.of("productId", productId, "inStock", true);
+    }
+
 }
 
 
