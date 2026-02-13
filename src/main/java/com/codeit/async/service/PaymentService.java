@@ -46,8 +46,8 @@ public class PaymentService {
     }
 
 
+    @Retry(name = "paymentRetry", fallbackMethod = "fallbackPayment")
     @Async("paymentExecutor")
-    @Retry(name = "paymentRetry", fallbackMethod = "recover")
     public CompletableFuture<PaymentResult> processPaymentWithResult(String orderId, String customerName, int amount) {
         String threadName = Thread.currentThread().getName();
         log.info("[{}] 결제 처리 시작: 주문번호={}, 고객={}, amount={}", threadName, orderId, customerName, amount);
@@ -71,7 +71,7 @@ public class PaymentService {
     // 메서드 이름이 fallbackMethod와 일치해야 함.
     // 리턴타입이 원본 메서드와 동일해야 함.
     // 파라미터는 원본 파라미터 + 마지막에 Throwable 타입을 전달받아야 함.
-    public CompletableFuture<PaymentResult> recover(String orderId, String customerName, int amount, Throwable e) {
+    public CompletableFuture<PaymentResult> fallbackPayment(String orderId, String customerName, int amount, Throwable e) {
         log.error("모든 재시도 실패... 주문번호: {}, 최종 원인: {}", orderId, e.getMessage());
 
 //        return CompletableFuture.failedFuture(e); -> 컨트롤러 쪽의 exceptionally 동작

@@ -3,23 +3,19 @@ package com.codeit.async.controller;
 import com.codeit.async.config.AsyncUtil;
 import com.codeit.async.context.UserContext;
 import com.codeit.async.model.Coffee;
-import com.codeit.async.model.PaymentResult;
-import com.codeit.async.service.CoffeeService;
-import com.codeit.async.service.NotificationService;
-import com.codeit.async.service.OrderService;
-import com.codeit.async.service.PaymentService;
+import com.codeit.async.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -34,6 +30,7 @@ public class OrderController {
     private final PaymentService paymentService;
     private final NotificationService notificationService;
     private final AsyncUtil asyncUtil;
+    private final InventoryService inventoryService;
 
     @GetMapping("/sync/{type}")
     public Coffee orderCoffeeSync(@PathVariable String type) {
@@ -243,6 +240,14 @@ public class OrderController {
         ));
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    @GetMapping("/webclient/inventory/{productId}")
+    public Mono<Map> checkInventory(@PathVariable String productId) {
+        log.info("=== 재고 확인 요청 ===");
+
+        return inventoryService.checkStock(productId);
+    }
 
 
 
