@@ -2,6 +2,9 @@ package com.codeit.async.controller;
 
 import com.codeit.async.config.AsyncUtil;
 import com.codeit.async.context.UserContext;
+import com.codeit.async.dto.PostRequestDto;
+import com.codeit.async.dto.PostResponseDto;
+import com.codeit.async.dto.UserDashboard;
 import com.codeit.async.model.Coffee;
 import com.codeit.async.service.*;
 import lombok.RequiredArgsConstructor;
@@ -249,6 +252,15 @@ public class OrderController {
         return inventoryService.checkStockWithRetry(productId);
     }
 
+    @PostMapping("/posts")
+    public Mono<PostResponseDto> createPost(@RequestBody PostRequestDto requestDto) {
+        return inventoryService.createPostToJsonPlaceHolder(requestDto);
+    }
+
+    @GetMapping("/dashboard/{userId}")
+    public Mono<UserDashboard> getDashboard(@PathVariable int userId) {
+        return inventoryService.getDashboard(userId);
+    }
 
 
 }

@@ -1,11 +1,14 @@
 package com.codeit.async.service;
 
+import com.codeit.async.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
@@ -80,6 +83,54 @@ public class InventoryService {
                     // 선택지 2: 비즈니스 커스텀 예외로 바꿔서 던지기
 //                    return Mono.error(new RuntimeException("외부 연동 실패!", ex));
                 });
+    }
+
+
+    public Mono<PostResponseDto> createPostToJsonPlaceHolder(PostRequestDto requestDto) {
+        WebClient client = WebClient.create("https://jsonplaceholder.typicode.com");
+
+        return client.post()
+                .uri("/posts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestDto)
+                .retrieve()
+                .bodyToMono(PostResponseDto.class);
+
+    }
+
+    public Mono<UserDashboard> getDashboard(int userId) {
+        WebClient client = WebClient.create("https://jsonplaceholder.typicode.com");
+
+        // 사용자 정보 요청
+        Mono<UserResponse> userMono = client.get()
+                .uri("/users/{id}", userId)
+                .retrieve()
+                .bodyToMono(UserResponse.class)
+                // 메인 스레드는 비즈니스 로직만 수행하고, API 호출 및 데이터 처리는 boundedElastic에게 넘기겠다.
+                .subscribeOn(Schedulers.boundedElastic());
+
+        // 할 일 정보 요청
+        Mono<TodoResponse> todoMono = client.get()
+                .uri("/todos/{userId}", userId)
+                .retrieve()
+                .bodyToMono(TodoResponse.class)
+                .subscribeOn(Schedulers.boundedElastic());
+
+        return Mono.zip(userMono, todoMono, (user, todo) -> {
+
+            String companyName = user.company().name();
+            String status = todo.completed() ? "완료" : "진행 중";
+
+            return new UserDashboard(
+                    user.name(),
+                    user.email(),
+                    companyName,
+                    todo.title(),
+                    status
+            );
+        });
+
+
     }
 
 

@@ -10,6 +10,7 @@ import java.util.Map;
 @Slf4j
 public class MockInventoryController {
 
+
     @GetMapping("/check/{productId}")
     public Map<String, Object> checkStock(
             @PathVariable String productId,
