@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
@@ -55,7 +56,13 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setThreadNamePrefix("notification-");
 
         // Task Decorator 설정
-        executor.setTaskDecorator(new ContextPropagatingTaskDecorator());
+        executor.setTaskDecorator(new CompositeTaskDecorator(
+                List.of(
+                        new UserContextTaskDecorator(),
+                        new LoggingTaskDecorator()
+                        // 나중에 추가될 TaskDecorator만 여기에 추가하면 끝!
+                )
+        ));
 
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardOldestPolicy());
 
