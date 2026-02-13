@@ -6,3 +6,33 @@ server:
   tomcat:
     threads:
       max: 1
+
+resilience4j:
+  retry:
+    instances:
+      # paymentRetry라는 이름의 규칙을 만듭니다. (이름은 내 맘대로)
+      paymentRetry:
+        maxAttempts: 3
+        waitDuration: 1000ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+
+        # 재시도 할 예외 타입 지정
+        retryExceptions:
+          - java.lang.RuntimeException
+          - com.codeit.async.exception.PaymentException
+
+        # 재시도 하면 안되는 예외 지정
+        ignoreExceptions:
+          - java.lang.IllegalArgumentException
+
+
+
+
+
+
+
+
+
+
+

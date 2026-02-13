@@ -2,10 +2,8 @@ package com.codeit.async.service;
 
 import com.codeit.async.exception.PaymentException;
 import com.codeit.async.model.PaymentResult;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -49,11 +47,7 @@ public class PaymentService {
 
 
     @Async("paymentExecutor")
-    @Retryable(
-            retryFor = { PaymentException.class }, // 이 예외가 터지면 재시도
-            maxAttempts = 3, // 최대 3번
-            backoff = @Backoff(delay = 1000, multiplier = 2) // 대기시간 설정
-    )
+    @Retry(name = "paymentRetry", fallbackMethod = "recover")
     public CompletableFuture<PaymentResult> processPaymentWithResult(String orderId, String customerName, int amount) {
         String threadName = Thread.currentThread().getName();
         log.info("[{}] 결제 처리 시작: 주문번호={}, 고객={}, amount={}", threadName, orderId, customerName, amount);
@@ -74,8 +68,10 @@ public class PaymentService {
 
     }
 
-    @Recover
-    public CompletableFuture<PaymentResult> recover(PaymentException e, String orderId, String customerName, int amount) {
+    // 메서드 이름이 fallbackMethod와 일치해야 함.
+    // 리턴타입이 원본 메서드와 동일해야 함.
+    // 파라미터는 원본 파라미터 + 마지막에 Throwable 타입을 전달받아야 함.
+    public CompletableFuture<PaymentResult> recover(String orderId, String customerName, int amount, Throwable e) {
         log.error("모든 재시도 실패... 주문번호: {}, 최종 원인: {}", orderId, e.getMessage());
 
 //        return CompletableFuture.failedFuture(e); -> 컨트롤러 쪽의 exceptionally 동작
