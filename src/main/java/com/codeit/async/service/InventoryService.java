@@ -12,6 +12,7 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -110,23 +111,28 @@ public class InventoryService {
                 .subscribeOn(Schedulers.boundedElastic());
 
         // 할 일 정보 요청
-        Mono<TodoResponse> todoMono = client.get()
-                .uri("/todos/{userId}", userId)
+        Mono<List<TodoResponse>> todoMono = client.get()
+                .uri("/user/{userId}/todos", userId)
                 .retrieve()
-                .bodyToMono(TodoResponse.class)
+                .bodyToFlux(TodoResponse.class)
+                .collectList()
                 .subscribeOn(Schedulers.boundedElastic());
 
-        return Mono.zip(userMono, todoMono, (user, todo) -> {
+        return Mono.zip(userMono, todoMono, (user, todoList) -> {
 
             String companyName = user.company().name();
-            String status = todo.completed() ? "완료" : "진행 중";
+            int total = todoList.size();
+            int completed = (int) todoList.stream().filter(TodoResponse::completed).count();
+            String achievement = total > 0 ? (completed * 100 / total) + "% 달성" : "할 일 없음";
 
             return new UserDashboard(
                     user.name(),
                     user.email(),
                     companyName,
-                    todo.title(),
-                    status
+                    todoList,
+                    total,
+                    completed,
+                    achievement
             );
         });
 
